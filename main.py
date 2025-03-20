@@ -1,14 +1,19 @@
 from decimal import Decimal
-
+import re
 ROMAN_NUMERALS = {'I': 1, 'V': 5, 'X': 10, 'L': 50, 'C': 100, 'D': 500, 'M': 1000}
 galactic_units = {}
 
 def roman_to_int(roman):
+    
     total = 0
     prev_value = 0
 
     for char in reversed(roman):
-        value = ROMAN_NUMERALS.get(char, 0)
+        if char not in ROMAN_NUMERALS:
+            print(f"Invalid Roman numeral: {roman} contains unknown symbol '{char}'")
+            return -1 
+
+        value = ROMAN_NUMERALS[char]
         if value < prev_value:
             total -= value
         else:
@@ -18,8 +23,29 @@ def roman_to_int(roman):
     return total
 
 def is_valid_roman(roman):
-    invalid_patterns = ["DD", "LL", "VV", "MMMM", "CCCC", "XXXX"]
-    return not any(pattern in roman for pattern in invalid_patterns)
+
+
+    if not all(char in ROMAN_NUMERALS for char in roman):
+        return False 
+
+    if re.search(r"(IIII|VV|XXXX|LL|CCCC|DD|MMMM)", roman):
+        return False
+
+    invalid_subtractions = ["IL", "IC", "ID", "IM",  
+                            "VX", "VL", "VC", "VD", "VM",  
+                            "XD", "XM",  
+                            "LC", "LD", "LM",  
+                            "DM",  
+                            "VV", "LL", "DD"] 
+
+    for pattern in invalid_subtractions:
+        if pattern in roman:
+            return False
+    for i in range(len(roman) - 2):
+        if ROMAN_NUMERALS[roman[i]] < ROMAN_NUMERALS[roman[i+1]] and ROMAN_NUMERALS[roman[i]] < ROMAN_NUMERALS[roman[i+2]]:
+            return False  
+
+    return True
 
 def process_metal(line, metal):
     parts = line.split(metal)
@@ -39,7 +65,7 @@ def process_metal(line, metal):
 
     roman_value = ''.join(galactic_units.get(u, '') for u in units)
 
-    if not roman_value or not is_valid_roman(roman_value):
+    if not roman_value or not is_valid_roman(roman_value) or roman_to_int(roman_value) == -1:
         print("I have no idea what you are talking about")
         return
 
@@ -52,6 +78,7 @@ def process_metal(line, metal):
     galactic_units[metal] = Decimal(credits) / Decimal(converted_int)
 
 def translate(line, separator):
+    
     parts = line.split(separator)
     
     if len(parts) != 2:
@@ -77,15 +104,15 @@ def translate(line, separator):
             return
 
     if roman_value:
-        total = roman_to_int(roman_value)
-        print(f"{' '.join(units)} is {total}")
+        if is_valid_roman(roman_value) and roman_to_int(roman_value) != -1:
+            total = roman_to_int(roman_value)
+            print(f"{' '.join(units)} is {total}")
+        else:
+            print("Invalid Roman numeral format.")
 
 def parse(line):
-    line = line.strip().rstrip("?")
 
-    if not is_valid_roman(line):
-        print("The string is invalid")
-        return
+    line = line.strip().rstrip("?")
 
     if "how many Credits" in line:
         translate(line, "how many Credits is")
@@ -112,6 +139,7 @@ def parse(line):
         print("I have no idea what you are talking about")
 
 def main():
+  
     with open("input.txt", "r") as file:
         lines = file.readlines()
 
